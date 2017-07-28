@@ -148,13 +148,13 @@ else { $prefix = fileparse($bam, qr/\.[^.]*(\.bam)?$/); }
 my $newpath = $out."/".$prefix;
 `mkdir $newpath`; chdir $newpath;
 #STARTING
-#HTSEQ TO GET GENES ACTIVE
+# 1. HTSEQ TO GET GENES ACTIVE
 `htseq-count -t gene -i gene -s yes -f bam $bam $gff 1>htseq.log 2>htseq.err`;
 #HTSEQ();
-#INITIALIZING GFF FILE
+# 2. INITIALIZING GFF FILE
 GFF_FILE();
 
-#PARSE TO REFERENCE  SCRIPT
+# 3. PARSE TO REFERENCE  SCRIPT
 open(REFPERL,">refperl.pl");
 print REFPERL "#!/usr/bin/perl\nuse Scalar::Util::Numeric qw(isint);";
 my $refperlcontent = <<"ENDREFPERL";
@@ -215,7 +215,7 @@ ENDREFPERL
 print REFPERL $refperlcontent."\n";
 close REFPERL;
 
-#PARSE TO BAM FILE & SAMPLES
+# 4. PARSE TO BAM FILE & SAMPLES
 open(BAMPERL,">bamperl.pl");
 my $bamperlcontent = <<"ENDBAMPERL";
 #!/usr/bin/perl
@@ -309,16 +309,7 @@ print SAMPERL $samperlcontent."\n";
 }
 }
 $samperlcontent = <<"ENDSAMPERL";
-sleep(30);
-AGAIN: {
-  my \$countsam = `ls -l *sam.nuc | wc -l`; chomp \$countsam;
-  while (\$countsam <= \$sumofgenes){
-    redo AGAIN if \$countsam < \$sumofgenes;
-    if(\$countsam == \$sumofgenes) {
-      `perl combine.pl`;
-    }
-  }
-}
+
 ENDSAMPERL
 print SAMPERL $samperlcontent."\n";
 close SAMPERL;
@@ -334,7 +325,7 @@ ENDBAMPERL
 print BAMPERL $bamperlcontent."\n";
 close BAMPERL;
 
-###FOR COMBINE STAGE && KAKS
+# 5. FOR COMBINE STAGE && KAKS
 open(COMBINE,">combine.pl");
 my $combinecontent = <<"ENDCOMBINE";
 #!/usr/bin/perl
@@ -459,23 +450,10 @@ open(FQ,">fastq.pm");
 print FQ $fastqcontent."\n";
 close FQ;
 
-##PARALLELIZING
-my $max_procs = 15;
-my @processes = qw( refperl.pl bamperl.pl );
-my $pm =  new Parallel::ForkManager($max_procs);
-foreach my $proc ( 0 .. $#processes ) {
-  my $pid = $pm->start and next;
-  # This code is the child process
-  print "$processes[$proc] working\n";
-  print system ("perl $processes[$proc]");
-  $pm->finish; # pass an exit code to finish
-}
-print "All Queued up :)\n Wait for the bam sort and htseq before the trauma begins\n";
-
-##CLEANUP
+# 6. CLEANUP
 open(CLEAN,">cleanup.pl");
 print CLEAN "#!/usr/bin/perl\n";
-print CLEAN "chdir \"$newpath\"\n";
+print CLEAN "chdir \"$newpath\";\n";
 my $cleancontent = <<'ENDCLEAN';
 #All the nucleotide files
 `mkdir nucleotides`;
@@ -504,6 +482,41 @@ ENDCLEAN
 print CLEAN $cleancontent."\n";
 close CLEAN;
 close STDOUT; close STDERR;
+
+#7. JOB EXECUTION
+print "Job execution: refperl.pl\n";
+`perl refperl.pl`;
+print "Job completed: refperl.pl\nJob execution: bamperl.pl\n";
+`perl bamperl.pl`;
+
+my $moveon = 0;
+my $verdict = `ps -u | grep samperl`;
+while ($verdict != /samperl-\d+\.pl/){
+	$verdict = `ps -u | grep samperl`;
+	$moveon = 1;
+}
+
+if ($moveon == 1){
+	$moveon = 2;
+	print "Job completed: bamperl.pl\nJob execution: combine.pl\n";
+	`perl combine.pl`;
+}
+
+$verdict = `ps -u | grep kaks`;
+while ($verdict != /kaks-\d+\.pl/) {
+	$verdict = `ps -u | grep kaks`;
+	$moveon = 3;
+}
+
+if ($moveon == 3){
+	print "Job completed: combine.pl\nJob execution: cleanup.pl\n";
+	`perl cleanup.pl`;
+}
+
+print "Job completed: cleanup.pl\n";
+print "Finished!!!!\n";
+
+
 ##SUBROUTINES
 #converts gff file to a tab-delimited file for genes
 sub GFF_FILE {
@@ -516,6 +529,7 @@ sub GFF_FILE {
       foreach my $abc (@newall){
         if ($abc =~ /^Name=.*/){
           my @bcd = split("\=",$abc,2);
+					$bcd[1] =~ s/ /\_/g;
 #          if (exists $HTALL{$bcd[1]}){
             $sumofgenes++;
             if (exists $GENE{$bcd[1]}){
