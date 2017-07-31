@@ -111,8 +111,8 @@ my $std_out = '/home/modupe/.LOG/KaKs-'.`date +%m-%d-%y_%T`; chomp $std_out; $st
 my $std_err = '/home/modupe/.LOG/KaKs-'.`date +%m-%d-%y_%T`; chomp $std_err; $std_err = $std_err.'.err';
 my $jobid = "KaKs-".`date +%m-%d-%y_%T`;
 
-open(STDOUT, '>', "$std_out") or die "Log file doesn't exist";
-open(STDERR, '>', "$std_err") or die "Error file doesn't exist";
+#open(STDOUT, '>', "$std_out") or die "Log file doesn't exist";
+#open(STDERR, '>', "$std_err") or die "Error file doesn't exist";
  
 # #ARGUMENTS
 my($help,$manual,$gff,$ref,$bam, $out, $name);
@@ -227,8 +227,7 @@ my \$std_out = "$std_out";
 my \$std_err = "$std_err";
 my \$samsort = "samtools sort $bam -o aln.sorted.bam";
 my \$samindex = "samtools index aln.sorted.bam";
-#`\$samsort`;
-#`\$samindex`;
+`\$samsort`; `\$samindex`;
 ENDBAMPERL
 print BAMPERL $bamperlcontent."\n";
 print BAMPERL "\$sum=$sumofgenes;\n";
@@ -378,15 +377,6 @@ print KAKS $kaksperlcontent."\n";
 }
 }
 $kaksperlcontent = <<'ENDKAKSPERL';
-AGAIN: {
-  my $countkaks = `ls -l *.kaks | wc -l`; chomp $countkaks;
-  while ($countkaks <= $sum){
-    redo AGAIN if $countkaks < $sum;
-    if($countkaks == $sum) {
-      `perl clean.pl`;
-    }
-  }
-}
 ENDKAKSPERL
 print KAKS $kaksperlcontent."\n";
 close KAKS;
