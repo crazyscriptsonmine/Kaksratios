@@ -475,7 +475,7 @@ print "All Queued up :)\n Wait for the bam sort and htseq before the trauma begi
 ##CLEANUP
 open(CLEAN,">cleanup.pl");
 print CLEAN "#!/usr/bin/perl\n";
-print CLEAN "chdir \"$newpath\"\n";
+print CLEAN "chdir \"$newpath\";\n";
 my $cleancontent = <<'ENDCLEAN';
 #All the nucleotide files
 `mkdir nucleotides`;
