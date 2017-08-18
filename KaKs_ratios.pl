@@ -157,13 +157,19 @@ my $bamperlcontent = <<"ENDBAMPERL";
 use threads;
 use Thread::Queue;
 use Scalar::Util::Numeric qw(isint);
+chdir \"$newpath\";
 open(STDOUT, '>>', "$std_out.bam") or die "Log file doesn't exist";
 open(STDERR, '>>', "$std_out.bam") or die "Error file doesn't exist";
 my \$std_out = "$std_out.sam";
-my \$samsort = "~/.software/samtools-0.1.19/samtools sort $bam -o aln.sorted.bam";
-my \$samindex = "~/.software/samtools-0.1.19/samtools index aln.sorted.bam";
-print "Sorting and Indexing BAM file\n";
-`\$samsort`; `\$samindex`;
+my \$samsort = "samtools sort $bam -o aln.sorted.bam";
+my \$samindex = "samtools index aln.sorted.bam";
+unless (-e "aln.sorted.bam"){
+	print "Sorting and Indexing BAM file\\n";
+	`\$samsort`;
+}
+unless (-e "aln.sorted.bam.bai") {
+        `\$samindex`;
+}
 ENDBAMPERL
 print BAMPERL $bamperlcontent."\n";
 print BAMPERL "\$sum=$sumofgenes;\n";
@@ -363,20 +369,6 @@ sub main {
 			}
 		}
   }
-  foreach(1..10) { $queue-> enqueue(undef); }
-}
-
-
-
-sub main {
-  foreach my $count (0..$#VAR) {
-		while(1) {
-			if ($queue->pending() < 100) {
-				$queue->enqueue($VAR[$count]);
-				last;
-			}
-		}
-  }
   foreach(1..15) { $queue-> enqueue(undef); }
 }
 
@@ -450,7 +442,6 @@ open(STDERR, '>>', "$std_out.ext") or die "Error file doesn't exist";
 ENDEXTRACT
 print EXTRACT $extractcontent."\n";
 print EXTRACT "\$sum=$sumofgenes;\n";
-print EXTRACT "\$path=\"$newpath\";\n";
 print EXTRACT "chdir \"$newpath\";\n";
 print EXTRACT Data::Dumper->Dump( [ \%GENE ], [ qw(*GENE) ] );
 $extractcontent = <<'ENDEXTRACT';
@@ -461,9 +452,9 @@ my (@filecontent, @chrscontent);
 foreach my $genename (sort keys %GENE ){
   foreach my $number (1..$GENE{$genename}){
     my $fileloc = $genename."-".$number;
-    open (KAKSIN, "<$fileloc.kaks"); @filecontent = <KAKSIN>; close (KAKSIN);
-		open (CHRS, "<$fileloc.chrs"); @chrscontent = <CHRS>; close (CHRS);
-		OPEN (ALLOUT, ">$fileloc.finalkaks);
+    open(KAKSIN, "<$fileloc.kaks"); @filecontent = <KAKSIN>; close (KAKSIN);
+		open(CHRS, "<$fileloc.chrs"); @chrscontent = <CHRS>; close (CHRS);
+		open(ALLOUT, ">$fileloc.finalkaks");
 		
 		($method, $seq, $verdict) = (0,0,0);
 		undef %Name; undef %METHOD; undef @array;
@@ -486,12 +477,12 @@ foreach my $genename (sort keys %GENE ){
       }
 		} #end foreach
 		my @finalheader = map {$_; } sort keys %METHOD;
-		print ALLOUT "Name\tChrlocation\t";
+		print ALLOUT "Name\tCount\tChrlocation\t";
 		print ALLOUT join("\t",@finalheader),"\tAVERAGE\tVERDICT\n";
-		print ALLOUT "$Name{1}\t", (split("\t", $chrcontent[0]))[1] ,"\t";
+		print ALLOUT "$Name{1}\t", substr(((split("\t", $chrscontent[0]))[1]),0,-1) ,"\t";
 		
 		foreach (sort keys %METHOD){ 
-			print $METHOD{$_},"\t"; 
+			print ALLOUT $METHOD{$_},"\t"; 
       if (($METHOD{$_} > 0)  && ($METHOD{$_} != /NA/i) && ($METHOD{$_} != "50")) {
 				push @array, $METHOD{$_};  
       }
@@ -594,7 +585,6 @@ print "All sorted into respective folders\n";
 ENDCLEAN
 print CLEAN $cleancontent."\n";
 close CLEAN;
-
 ##- - - - - - - ENDOF CLEAN UP files - - - - - - - - - -
 
 # 8. JOB EXECUTION
