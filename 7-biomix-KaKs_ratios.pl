@@ -485,7 +485,7 @@ foreach my $genename (sort keys %GENE ){
 		}
 		if ($#array > 3) {
       my $mean =  &average(\@array);
-      print "$mean";
+      print ALLOUT "$mean";
       if (sprintf("%.0f",$mean) > 1) { print ALLOUT "\tpositive"; }
       elsif (sprintf("%.0f",$mean)  < 1) { print ALLOUT "\tnegative"; }
       elsif (sprintf("%.0f",$mean) == 1) { print ALLOUT "\tneutral"; }
@@ -621,29 +621,18 @@ print TEMPIT "echo;\necho \"done\";\n";
 close (TEMPIT);
 print "Run `sbatch temp-combine.sh`\n";
 
-print "Job execution: 4. extractkaksratios.pl\n";
-open (TEMPIT, ">temp-extractkaksratios.sh");
+print "Job execution: 4. extractkaksratios.pl and 5. cleanup.sh \n";
+open (TEMPIT, ">temp-extract_cleanup.sh");
 print TEMPIT '#!/bin/bash',"\n";
-print TEMPIT '#SBATCH --job-name=extractkaksratios',"\n";
+print TEMPIT '#SBATCH --job-name=ex-clean',"\n";
 print TEMPIT '#SBATCH --ntasks=1',"\n";
 print TEMPIT '#SBATCH --mem=160000',"\n";
 print TEMPIT "echo 'extractkaksratios working'\n";
 print TEMPIT "perl extractkaksratios.pl\n";
-print TEMPIT "echo;\necho \"done\";\n";
-close (TEMPIT);
-print "Run `sbatch temp-extractkaksratios.sh`\n";
-
-print "Job execution: 5. cleanup.pl\n";
-open (TEMPIT, ">temp-cleanup.sh");
-print TEMPIT '#!/bin/bash',"\n";
-print TEMPIT '#SBATCH --job-name=cleanup',"\n";
-print TEMPIT '#SBATCH --ntasks=1',"\n";
-print TEMPIT '#SBATCH --mem=160000',"\n";
-print TEMPIT "echo 'cleanup working'\n";
 print TEMPIT "perl cleanup.pl\n";
 print TEMPIT "echo;\necho \"done\";\n";
 close (TEMPIT);
-print "Run `sbatch temp-cleanup.sh`\n";
+print "Run `sbatch temp-extract_cleanup.sh`\n";
 
 print "Finished!!!!\n";
 ##- - - - - - - ENDOF JOB EXECUTION - - - - - - - - - -
